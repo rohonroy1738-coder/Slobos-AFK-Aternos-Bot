@@ -47,16 +47,13 @@ function setupLeaveRejoin(bot, createBot) {
     function scheduleReconnect(reason = 'end') {
         if (stopped) return
 
-        // FAST RECONNECT: 2s -> 10s (User requested faster)
         let delay = randomMs(2000, 10000)
 
-        // Slight backoff for repeated failures, but keep it snappy
         reconnectAttempts++
         if (reconnectAttempts > 3) {
-            delay += 5000 // Add 5s if it's failing a lot
+            delay += 5000
         }
 
-        // Cap at 30s max
         delay = Math.min(delay, 15000)
 
         logThrottled(`[AFK] Rejoin scheduled in ${Math.round(delay / 1000)}s (reason: ${reason}, attempt: ${reconnectAttempts})`)
@@ -73,21 +70,15 @@ function setupLeaveRejoin(bot, createBot) {
     }
 
     bot.once('spawn', () => {
-        // reset attempt counter on successful connect
         reconnectAttempts = 0
-
-        // clear any old timers
         cleanup()
         stopped = false
 
-        // Bot will NEVER leave the server
-        logThrottled(`[AFK] Bot will stay connected permanently`)
+        logThrottled(`[AFK] Bot is now staying permanently (no auto-leave)`)
 
         scheduleNextJump()
     })
 
-    // When the connection ends for ANY reason, just clean up our timers.
-    // Reconnection is handled by index.js — no duplicate reconnect here.
     bot.on('end', () => {
         cleanup()
     })
