@@ -5,6 +5,7 @@ function randomMs(minMs, maxMs) {
 function setupLeaveRejoin(bot) {
     let jumpTimer = null
     let jumpOffTimer = null
+    let leaveTimer = null
     let stopped = false
     let lastLogAt = 0
 
@@ -20,7 +21,23 @@ function setupLeaveRejoin(bot) {
         stopped = true
         if (jumpTimer) clearTimeout(jumpTimer)
         if (jumpOffTimer) clearTimeout(jumpOffTimer)
-        jumpTimer = jumpOffTimer = null
+        if (leaveTimer) clearTimeout(leaveTimer)
+        jumpTimer = jumpOffTimer = leaveTimer = null
+    }
+
+    function scheduleLeave() {
+        if (stopped || !bot.entity) return
+
+        const stayTime = randomMs(30 * 60 * 1000, 60 * 60 * 1000) // 30min - 1hr
+        logThrottled(`[AFK] Slobot00 will leave in ~${Math.floor(stayTime/60000)} minutes`)
+
+        leaveTimer = setTimeout(() => {
+            if (stopped || !bot.entity) return
+            logThrottled(`[AFK] Slobot00 leaving after session (30-60min)`)
+            try {
+                bot.quit() // or bot.end()
+            } catch (e) {}
+        }, stayTime)
     }
 
     function scheduleNextJump() {
@@ -36,12 +53,13 @@ function setupLeaveRejoin(bot) {
     bot.once('spawn', () => {
         cleanup()
         stopped = false
-        logThrottled(`[AFK] Slobot00 is now staying PERMANENTLY - No leaving`)
+        logThrottled(`[AFK] Slobot00 joined - will AFK for 30-60min then leave`)
         scheduleNextJump()
+        scheduleLeave()  // <-- Added: auto-leave timer
     })
 
     bot.on('end', () => {
-        logThrottled(`[AFK] Bot disconnected (reason: end)`)
+        logThrottled(`[AFK] Bot disconnected`)
         cleanup()
     })
 
