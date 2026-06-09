@@ -27,27 +27,33 @@ function setupLeaveRejoin(bot) {
         if (stopped || !bot.entity) return
 
         bot.setControlState('jump', true)
-        jumpOffTimer = setTimeout(() => {
-            bot.setControlState('jump', false)
-        }, 300)
+        jumpOffTimer = setTimeout(() => bot.setControlState('jump', false), 300)
 
-        const nextJump = randomMs(20000, 300000) // 20s to 5min
+        const nextJump = randomMs(30000, 240000) // 30s to 4min
         jumpTimer = setTimeout(scheduleNextJump, nextJump)
     }
 
     bot.once('spawn', () => {
         cleanup()
         stopped = false
-        logThrottled(`[AFK] Slobot00 connected permanently - No auto leave`)
+        logThrottled(`[AFK] Slobot00 is now staying PERMANENTLY - No leaving`)
         scheduleNextJump()
     })
 
-    bot.on('end', cleanup)
-    bot.on('kicked', (reason) => {
-        logThrottled(`[AFK] Kicked: ${reason}`)
+    bot.on('end', () => {
+        logThrottled(`[AFK] Bot disconnected (reason: end)`)
         cleanup()
     })
-    bot.on('error', cleanup)
+
+    bot.on('kicked', (reason) => {
+        logThrottled(`[AFK] Bot was kicked: ${reason}`)
+        cleanup()
+    })
+
+    bot.on('error', (err) => {
+        logThrottled(`[AFK] Bot error: ${err.message || err}`)
+        cleanup()
+    })
 }
 
 module.exports = setupLeaveRejoin
