@@ -5,7 +5,6 @@ function randomMs(minMs, maxMs) {
 function setupLeaveRejoin(bot) {
     let jumpTimer = null
     let jumpOffTimer = null
-    let leaveTimer = null
     let stopped = false
     let lastLogAt = 0
 
@@ -19,58 +18,50 @@ function setupLeaveRejoin(bot) {
 
     function cleanup() {
         stopped = true
+
         if (jumpTimer) clearTimeout(jumpTimer)
         if (jumpOffTimer) clearTimeout(jumpOffTimer)
-        if (leaveTimer) clearTimeout(leaveTimer)
-        jumpTimer = jumpOffTimer = leaveTimer = null
-    }
 
-    function scheduleLeave() {
-        if (stopped || !bot.entity) return
-
-        const stayTime = randomMs(30 * 60 * 1000, 60 * 60 * 1000) // 30min - 1hr
-        logThrottled(`[AFK] Slobot00 will leave in ~${Math.floor(stayTime/60000)} minutes`)
-
-        leaveTimer = setTimeout(() => {
-            if (stopped || !bot.entity) return
-            logThrottled(`[AFK] Slobot00 leaving after session (30-60min)`)
-            try {
-                bot.quit() // or bot.end()
-            } catch (e) {}
-        }, stayTime)
+        jumpTimer = null
+        jumpOffTimer = null
     }
 
     function scheduleNextJump() {
         if (stopped || !bot.entity) return
 
-        bot.setControlState('jump', true)
-        jumpOffTimer = setTimeout(() => bot.setControlState('jump', false), 300)
+        try {
+            bot.setControlState('jump', true)
 
-        const nextJump = randomMs(30000, 240000) // 30s to 4min
+            jumpOffTimer = setTimeout(() => {
+                try {
+                    bot.setControlState('jump', false)
+                } catch (e) {}
+            }, 300)
+        } catch (e) {}
+
+        const nextJump = randomMs(30000, 240000)
         jumpTimer = setTimeout(scheduleNextJump, nextJump)
     }
 
     bot.once('spawn', () => {
-        cleanup()
         stopped = false
-        logThrottled(`[AFK] Slobot00 joined - will AFK for 30-60min then leave`)
+
+        console.log('[AFK] Bot joined server')
         scheduleNextJump()
-        scheduleLeave()  // <-- Added: auto-leave timer
     })
 
     bot.on('end', () => {
-        logThrottled(`[AFK] Bot disconnected`)
+        console.log('[AFK] Bot disconnected')
         cleanup()
     })
 
     bot.on('kicked', (reason) => {
-        logThrottled(`[AFK] Bot was kicked: ${reason}`)
+        console.log('[AFK] Bot was kicked:', reason)
         cleanup()
     })
 
     bot.on('error', (err) => {
-        logThrottled(`[AFK] Bot error: ${err.message || err}`)
-        cleanup()
+        console.log('[AFK] Bot error:', err)
     })
 }
 
